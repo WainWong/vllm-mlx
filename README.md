@@ -1,6 +1,6 @@
 # vLLM-MLX
 
-**Production-grade OpenAI-compatible LLM server for Apple Silicon**
+**Production-grade agent inference server for Apple Silicon**
 
 [![Fork](https://img.shields.io/badge/Fork-raullenchai%2Fvllm--mlx-orange?logo=github)](https://github.com/raullenchai/vllm-mlx)
 [![Upstream](https://img.shields.io/badge/Upstream-waybarrios%2Fvllm--mlx-blue?logo=github)](https://github.com/waybarrios/vllm-mlx)
@@ -9,7 +9,15 @@
 [![Tests](https://img.shields.io/badge/tests-1500%2B-brightgreen.svg)](tests/)
 [![Apple Silicon](https://img.shields.io/badge/Apple_Silicon-M1%20|%20M2%20|%20M3%20|%20M4-black.svg?logo=apple)](https://support.apple.com/en-us/HT211814)
 
-GPU-accelerated LLM inference on Mac via [MLX](https://github.com/ml-explore/mlx). Built on [waybarrios/vllm-mlx](https://github.com/waybarrios/vllm-mlx), this fork adds **40+ commits** with tool calling, reasoning separation, prompt caching, smart cloud routing, and 1500+ tests.
+Run local LLMs as a **drop-in replacement for OpenAI** — with the reliability that agent frameworks demand. GPU-accelerated on Mac via [MLX](https://github.com/ml-explore/mlx), built for tools like **Claude Code, Cursor, OpenClaw, Aider, LangChain, and any OpenAI-compatible client**.
+
+The upstream [waybarrios/vllm-mlx](https://github.com/waybarrios/vllm-mlx) is a solid MLX inference wrapper. This fork transforms it into a **production agent server** — the kind of infrastructure you need when AI agents call tools, reason through problems, and run multi-turn sessions that last hours.
+
+### Why This Fork?
+
+Local models are fast and private, but they break in agent workflows. Quantized models forget their tool format after a few rounds. Streaming responses leak XML into content. Disconnected clients lock the server. Multi-turn conversations re-prefill the entire context every time.
+
+**We fix all of that at the server level**, so every client — Cursor, Claude Code, your custom agent — just works.
 
 ---
 
@@ -17,15 +25,27 @@ GPU-accelerated LLM inference on Mac via [MLX](https://github.com/ml-explore/mlx
 
 | Capability | Upstream | This Fork |
 |-----------|----------|-----------|
-| Tool calling | Not supported | Streaming + non-streaming, 7 parser formats, auto-recovery of degraded outputs |
-| Reasoning separation | Not supported | Clean `reasoning_content` field (0% leak rate) |
-| Multi-turn TTFT | Full prefill every turn | **10-30x faster** — persistent prompt cache |
-| Long-context prefill | 50s for 52K tokens | **<1s** — smart cloud routing offloads to GPT-5/Claude |
-| Decode speed | Baseline | 65-70 tok/s on M3 Ultra (Qwen3-Coder-Next-6bit) |
-| KV cache quantization | Not available | 4-bit and 8-bit, halves memory for long contexts |
-| Speculative decoding | Not available | `--draft-model` with prompt cache compatibility |
-| Logprobs API | Not available | Per-token `logprobs` + `top_logprobs` |
-| Test coverage | Minimal | **1500+ tests** |
+| **Tool calling** | Not supported | 7 parser formats, streaming, **auto-recovery of degraded outputs** |
+| **Agent reliability** | N/A | Disconnect guard, think-tag filtering, text-format tool call recovery |
+| **Reasoning separation** | Not supported | Clean `reasoning_content` field (0% leak rate) |
+| **Multi-turn TTFT** | Full prefill every turn | **10-30x faster** — persistent prompt cache |
+| **Long-context prefill** | 50s for 52K tokens | **<1s** — smart cloud routing offloads to GPT-5/Claude |
+| **Decode speed** | Baseline | 65-100 tok/s on M3 Ultra |
+| **KV cache quantization** | Not available | 4-bit and 8-bit, halves memory for long contexts |
+| **Speculative decoding** | Not available | `--draft-model` with prompt cache compatibility |
+| **Logprobs API** | Not available | Per-token `logprobs` + `top_logprobs` |
+| **Test coverage** | Minimal | **1500+ tests** (unit + end-to-end agent simulation) |
+
+### Tested With
+
+| Client | Status | Notes |
+|--------|--------|-------|
+| [OpenClaw](https://github.com/nicepkg/openclaw) | Verified | 14 tools, multi-round, streaming |
+| [Aider](https://aider.chat) | Verified | Code editing agent |
+| [LangChain](https://langchain.com) | Compatible | Standard OpenAI client |
+| [Claude Code](https://claude.ai/claude-code) | Planned | OpenAI-compatible endpoint |
+| [Cursor](https://cursor.com) | Planned | OpenAI-compatible endpoint |
+| Any OpenAI SDK client | Compatible | Drop-in `base_url` swap |
 
 ---
 
@@ -57,7 +77,7 @@ python -m vllm_mlx.server \
   --port 8000
 ```
 
-That's it. You now have an OpenAI-compatible server on `localhost:8000`.
+That's it. You now have an OpenAI-compatible agent server on `localhost:8000`.
 
 ### 3. Use it
 
@@ -72,7 +92,20 @@ response = client.chat.completions.create(
 print(response.choices[0].message.content)
 ```
 
-Works with any OpenAI-compatible client — Cursor, Continue, Aider, LangChain, or your own code.
+Works as a drop-in backend for any OpenAI-compatible client:
+
+```bash
+# Claude Code
+OPENAI_BASE_URL=http://localhost:8000/v1 claude
+
+# Cursor — set in Settings > Models > OpenAI API Base
+# http://localhost:8000/v1
+
+# Aider
+aider --openai-api-base http://localhost:8000/v1
+
+# Any OpenAI SDK — just set base_url
+```
 
 ---
 
@@ -190,21 +223,58 @@ Disabled by default. Cost estimate: ~$0.02-0.05 per cloud-routed request with GP
 
 | Model | Params | Quant | RAM | Decode | Tool Parser | Best For |
 |-------|--------|-------|-----|--------|-------------|----------|
-| [Qwen3.5-122B-A10B](https://huggingface.co/nightmedia/Qwen3.5-122B-A10B-Text-mxfp4-mlx) | 122B/10B | mxfp4 | 72GB | ~35-50 tok/s | `hermes` | **Best tool calling** (BFCL 72.2) |
+| [Qwen3.5-122B-A10B](https://huggingface.co/nightmedia/Qwen3.5-122B-A10B-Text-mxfp4-mlx) | 122B/10B | mxfp4 | 74GB | **41-47 tok/s** | `hermes` | **Best overall** — tool calling + reasoning |
 | [Qwen3-Coder-Next](https://huggingface.co/lmstudio-community/Qwen3-Coder-Next-MLX-4bit) | 80B/3B | 4bit | 42GB | **~80-100 tok/s** | `hermes` | Speed + coding |
 | [Qwen3-Coder-Next](https://huggingface.co/lmstudio-community/Qwen3-Coder-Next-MLX-6bit) | 80B/3B | 6bit | 60GB | ~65 tok/s | `hermes` | **Best balance** |
-| [MiniMax-M2.5](https://huggingface.co/lmstudio-community/MiniMax-M2.5-MLX-4bit) | 229B/10B | 4bit | 120GB | 33-38 tok/s | `minimax` | Deep reasoning (192GB+) |
+| [MiniMax-M2.5](https://huggingface.co/lmstudio-community/MiniMax-M2.5-MLX-4bit) | 229B/10B | 4bit | 130GB | 33-38 tok/s | `minimax` | Deep reasoning (192GB+) |
 
 Benchmarks on Mac Studio M3 Ultra (256GB), 800 GB/s memory bandwidth.
+
+### Model Comparison: Qwen3.5-122B vs MiniMax-M2.5
+
+Tested on Mac Studio M3 Ultra (256GB) with OpenClaw (14 tools, multi-turn agent sessions):
+
+**Speed (with prompt cache hit):**
+
+| Metric | Qwen3.5-122B mxfp4 | MiniMax-M2.5 4bit |
+|--------|---------------------|-------------------|
+| Decode (short, <100 tok) | 25-37 tok/s | 33-38 tok/s |
+| Decode (long, 300+ tok) | **41-47 tok/s** | ~35 tok/s |
+| Decode peak (800 tok) | **46.3 tok/s** | 38 tok/s |
+| TTFT (cache hit) | **0.4-1.3s** | ~1-2s |
+| TTFT (cache miss, 8K tok) | 12s | ~12s |
+| Prefill throughput | ~670 tok/s | ~700 tok/s |
+
+**Agent reliability (OpenClaw, 14 tools):**
+
+| Metric | Qwen3.5-122B | MiniMax-M2.5 |
+|--------|--------------|--------------|
+| Tool-call loops | **None (78+ rounds)** | Confirmed — gets stuck in edit→read cycles |
+| Instruction following (IFEval) | **93.4%** | ~70% (estimated) |
+| Long conversation stability | **Stable at 23K+ tokens** | Degrades after ~90K tokens |
+| Max single output | **2196 tokens** (code review) | ~800 tokens |
+| Multi-step agent tasks | Completes reliably | Loops on complex tasks |
+
+**Resource usage:**
+
+| Metric | Qwen3.5-122B | MiniMax-M2.5 |
+|--------|--------------|--------------|
+| Model weight RAM | **74 GB** | 130 GB |
+| KV cache headroom (256GB) | **~180 GB** | ~120 GB |
+| Active params per token | 10B | 10B |
+
+**Verdict:** Qwen3.5-122B is the recommended model for agent workloads — faster decode on long outputs, half the memory, and no tool-call loops. MiniMax-M2.5 is slightly faster on short outputs but prone to agentic instability.
 
 ### Quick Start Commands
 
 ```bash
-# Qwen3.5-122B — best tool calling + reasoning, fits 192GB Macs
+# Qwen3.5-122B — best overall for agent workloads (74GB, 41-47 tok/s)
 python -m vllm_mlx.server \
   --model nightmedia/Qwen3.5-122B-A10B-Text-mxfp4-mlx \
   --tool-call-parser hermes \
-  --max-tokens 4096 \
+  --reasoning-parser qwen3 \
+  --prefill-step-size 8192 \
+  --kv-bits 8 \
   --port 8000
 
 # Qwen3-Coder-Next — fast coding agent (3B active, ~100 tok/s)
@@ -252,7 +322,8 @@ python -m vllm_mlx.server \
 
 | Model Family | `--tool-call-parser` | `--reasoning-parser` | Notes |
 |-------------|---------------------|---------------------|-------|
-| Qwen3.5, Qwen3-Coder-Next | `hermes` | *(none)* | Non-thinking mode, fast |
+| Qwen3.5-122B-A10B | `hermes` | `qwen3` | **Recommended** — best agent stability |
+| Qwen3-Coder-Next | `hermes` | *(none)* | Non-thinking mode, fast |
 | Qwen3 (thinking) | `qwen` or `qwen3_coder` | `qwen3` | With `<think>` tags |
 | MiniMax-M2.5 | `minimax` | `minimax` | XML tool format |
 | Llama 3.x | `llama` | *(none)* | JSON tool format |
@@ -411,21 +482,29 @@ OPENAI_API_KEY=sk-... python -m vllm_mlx.server \
 
 ## What This Fork Adds (vs. Upstream)
 
-### Tool Calling & Reasoning (12 features)
+### Agent-Grade Tool Calling (13 features)
 
-- MiniMax reasoning parser — heuristic no-tag stripping (0% leak rate, was 60%)
+- **Text-format tool call recovery** — quantized models degrade and output tool calls as plain text; server auto-detects and converts back to structured `tool_calls` (works with any model, any parser)
+- 7 tool parsers — Hermes, MiniMax, Qwen, Qwen3-Coder, Llama, DeepSeek, Functionary
 - MiniMax tool call parser — streaming + non-streaming XML extraction
 - `--tool-call-parser` flag — explicit parser selection for any model
 - Auto-infer tool parser — `--reasoning-parser minimax` auto-selects matching tool parser
-- Chunk-boundary leak fix — prevents XML leaking into reasoning stream
-- Chinese reasoning pattern recognition
 - Tool-use system prompt auto-injection (100% tool call rate, was 67%)
 - Tool logits bias — jump-forward decoding for 2-5x faster structured output
 - Hermes, Qwen, Qwen3-Coder, Llama, DeepSeek, Functionary parser support
 - **Text-format tool call recovery** — auto-detects and converts degraded plain-text tool calls (all parsers)
+- Streaming disconnect guard — client disconnects release server locks instead of deadlocking
+- Think-tag streaming filter — `<think>...</think>` blocks stripped from content, never leaked to clients
+- Chunk-boundary leak fix — prevents XML leaking into reasoning stream
 - `developer` role normalization for chat template compatibility
 - Logprobs API — per-token `logprobs` + `top_logprobs`
-- Streaming disconnect guard — graceful handling of client disconnects
+- End-to-end agent simulation tests — 14 tools, 8+ rounds, verified with OpenClaw
+
+### Reasoning Separation (3 features)
+
+- MiniMax reasoning parser — heuristic no-tag stripping (0% leak rate, was 60%)
+- Chinese reasoning pattern recognition
+- Clean `reasoning_content` field — reasoning never mixed into `content`
 
 ### Performance (6 features)
 
@@ -443,7 +522,7 @@ OPENAI_API_KEY=sk-... python -m vllm_mlx.server \
 - Server crash prevention on malformed `response_format`
 - GC control during generation to avoid latency spikes
 - System prompt pinning in prefix cache
-- **1500+ unit tests** across parsers, engine, server, and tool calling
+- **1500+ tests** — unit tests + end-to-end agent simulation with real tool execution
 
 ---
 
