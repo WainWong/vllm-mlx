@@ -113,10 +113,13 @@ For Qwen3 models that use explicit `<think>` and `</think>` tags.
 
 - Requires **both** opening and closing tags
 - If tags are missing, output is treated as regular content
-- Best for: Qwen3-0.6B, Qwen3-4B, Qwen3-8B and similar models
+- Best for: Qwen3-0.6B, Qwen3-4B, Qwen3-8B, Qwen3.5-122B-A10B and similar models
 
 ```bash
 vllm-mlx serve mlx-community/Qwen3-8B-4bit --reasoning-parser qwen3
+
+# Qwen3.5 MoE also uses qwen3 parser
+vllm-mlx serve ./Qwen3.5-122B-A10B-8bit --reasoning-parser qwen3
 ```
 
 ### DeepSeek-R1 Parser (`deepseek_r1`)

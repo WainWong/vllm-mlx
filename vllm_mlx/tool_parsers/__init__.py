@@ -9,6 +9,7 @@ Available parsers:
 - auto: Auto-detecting parser that tries all formats (default)
 - mistral: Mistral models ([TOOL_CALLS] format)
 - qwen/qwen3: Qwen models (<tool_call> and [Calling tool:] formats)
+- qwen3_5: Qwen3.5 models (<function=name><parameter=...> format, via hermes parser)
 - llama/llama3/llama4: Llama models (<function=name> format)
 - hermes/nous: Hermes/NousResearch models
 - deepseek/deepseek_v3/deepseek_r1: DeepSeek models (unicode tokens)

@@ -11,6 +11,7 @@ Browse thousands of pre-optimized models at: **https://huggingface.co/mlx-commun
 | Llama 3.x, 4.x | 1B, 3B, 8B, 70B | 4-bit |
 | Mistral / Devstral | 7B, Mixtral 8x7B | 4-bit, 8-bit |
 | Qwen2/Qwen3 | 0.5B to 72B | Various |
+| Qwen3.5 MoE | 122B-A10B | 4-bit, 8-bit |
 | DeepSeek V3, R1 | 7B, 33B, 67B | 4-bit |
 | Gemma 2, 3 | 2B, 9B, 27B | 4-bit |
 | GLM-4.7 | Flash, Base | 4-bit, 8-bit |

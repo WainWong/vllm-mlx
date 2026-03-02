@@ -818,6 +818,7 @@ Examples:
             "mistral",
             "qwen",
             "qwen3_coder",
+            "qwen3_5",
             "llama",
             "hermes",
             "deepseek",
@@ -831,7 +832,7 @@ Examples:
         ],
         help=(
             "Select the tool call parser for the model. Options: "
-            "auto (auto-detect), mistral, qwen, qwen3_coder, llama, hermes, "
+            "auto (auto-detect), mistral, qwen, qwen3_coder, qwen3_5, llama, hermes, "
             "deepseek, kimi, granite, nemotron, xlam, functionary, glm47, minimax. "
             "Required for --enable-auto-tool-choice."
         ),

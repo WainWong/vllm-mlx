@@ -55,7 +55,7 @@ Use `--tool-call-parser` to select a parser for your model family:
 | `mistral` | | Mistral, Devstral | `[TOOL_CALLS]` JSON array |
 | `qwen` | `qwen3` | Qwen, Qwen3 | `<tool_call>` XML or `[Calling tool:]` |
 | `llama` | `llama3`, `llama4` | Llama 3.x, 4.x | `<function=name>` tags |
-| `hermes` | `nous` | Hermes, NousResearch | `<tool_call>` JSON in XML |
+| `hermes` | `nous`, `qwen3_coder`, `qwen3_5` | Hermes, NousResearch, Qwen3.5 | `<tool_call>` JSON in XML |
 | `deepseek` | `deepseek_v3`, `deepseek_r1` | DeepSeek V3, R1 | Unicode delimiters |
 | `kimi` | `kimi_k2`, `moonshot` | Kimi K2, Moonshot | `<\|tool_call_begin\|>` tokens |
 | `granite` | `granite3` | IBM Granite 3.x, 4.x | `<\|tool_call\|>` or `<tool_call>` |
@@ -84,6 +84,11 @@ vllm-mlx serve mlx-community/Mistral-7B-Instruct-v0.3-4bit \
 # Qwen3
 vllm-mlx serve mlx-community/Qwen3-4B-4bit \
   --enable-auto-tool-choice --tool-call-parser qwen
+
+# Qwen3.5 MoE
+vllm-mlx serve ./Qwen3.5-122B-A10B-8bit \
+  --enable-auto-tool-choice --tool-call-parser qwen3_5 \
+  --reasoning-parser qwen3
 ```
 
 ### Llama

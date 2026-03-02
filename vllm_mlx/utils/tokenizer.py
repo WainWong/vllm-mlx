@@ -103,6 +103,14 @@ def _load_with_tokenizer_fallback(model_name: str):
                 unk_token = config.get("unk_token", unk_token)
                 chat_template = config.get("chat_template")
 
+        # Fallback: load chat template from standalone jinja file
+        # (e.g., Qwen3.5 stores template in chat_template.jinja, not tokenizer_config.json)
+        if not chat_template:
+            jinja_path = model_path / "chat_template.jinja"
+            if jinja_path.exists():
+                chat_template = jinja_path.read_text(encoding="utf-8")
+                logger.info("Chat template loaded from chat_template.jinja")
+
         tokenizer = PreTrainedTokenizerFast(
             tokenizer_object=base_tokenizer,
             bos_token=bos_token,
